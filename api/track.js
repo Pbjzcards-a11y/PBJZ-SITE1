@@ -1,4 +1,4 @@
-// api/track.js — PBJZ submission tracker
+// api/track.js — PBJZ submission tracker (with diagnostics)
 const STAGES = ["ORDER ARRIVED", "RESEARCH & ID", "GRADING", "ASSEMBLY", "QA CHECKS", "SHIPPED TO PBJZ", "ORDER SENT"];
 
 export default async function handler(req, res) {
@@ -18,7 +18,10 @@ export default async function handler(req, res) {
 
   try {
     const r = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
-    if (!r.ok) return res.status(502).json({ error: "Lookup failed" });
+    if (!r.ok) {
+      const detail = (await r.text()).slice(0, 300);
+      return res.status(502).json({ error: "Lookup failed", status: r.status, tokenPrefix: AIRTABLE_TOKEN.slice(0, 3), detail });
+    }
     const data = await r.json();
     const rec = data.records && data.records[0];
     if (!rec) return res.status(404).json({ error: "Not found" });
@@ -42,6 +45,6 @@ export default async function handler(req, res) {
       invoiceLink: f["INVOICE_LINK"] || ""
     });
   } catch (e) {
-    return res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ error: "Server error", detail: String(e).slice(0, 200) });
   }
 }
