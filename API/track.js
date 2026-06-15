@@ -1,32 +1,28 @@
-// api/track.js — Vercel serverless function
-// Reads submission status from Airtable, keeping your token secret on the server.
+// api/track.js — Vercel serverless function (PBJZ submission tracker)
+// Reads the "psa" table in your Airtable base, keeping your token secret server-side.
 //
-// Required environment variables (set in Vercel → Project → Settings → Environment Variables):
-//   AIRTABLE_TOKEN  — a Personal Access Token with data.records:read on your base
-//   AIRTABLE_BASE   — your base id (looks like app XXXXXXXXXXXXXX)
-//   AIRTABLE_TABLE  — the table name (default: "Submissions")
+// Environment variables to set in Vercel → Project → Settings → Environment Variables:
+//   AIRTABLE_TOKEN  — Personal Access Token with data.records:read on the base
+//   AIRTABLE_BASE   — appXQv0MUBLJkUlEK
+//   AIRTABLE_TABLE  — psa
 //
-// Airtable table fields expected:
-//   "Submission Number"  (single line text)
-//   "Status"             (single select — values must match STAGES below)
-//   "Cards"              (single line text, optional — e.g. "2023 Topps Chrome · 8 cards")
-//   "Last Updated"       (last modified time or date, optional)
+// Table fields used: PSA_NUMBER, STAGE, "LAST UPDATED", NOTES, PAYMENT_STATUS, INVOICE_LINK, VISIBLE
 
-const STAGES = ["Received", "Order prep", "Research & ID", "Grading", "Assembly", "Quality check", "Shipped"];
+// STAGE order must match the front-end STAGES array in index.html.
+const STAGES = ["ORDER ARRIVED", "RESEARCH & ID", "GRADING", "ASSEMBLY", "QA CHECKS", "SHIPPED TO PBJZ", "ORDER SENT"];
 
 export default async function handler(req, res) {
   const sub = (req.query.sub || "").toString().trim();
   if (!sub) return res.status(400).json({ error: "Missing submission number" });
 
   const { AIRTABLE_TOKEN, AIRTABLE_BASE } = process.env;
-  const table = process.env.AIRTABLE_TABLE || "Submissions";
+  const table = process.env.AIRTABLE_TABLE || "psa";
   if (!AIRTABLE_TOKEN || !AIRTABLE_BASE) {
     return res.status(500).json({ error: "Server not configured" });
   }
 
-  // Escape quotes for the Airtable formula, then match the submission number exactly.
   const safe = sub.replace(/'/g, "\\'");
-  const formula = `{Submission Number}='${safe}'`;
+  const formula = `{PSA_NUMBER}='${safe}'`;
   const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${encodeURIComponent(table)}`
             + `?filterByFormula=${encodeURIComponent(formula)}&maxRecords=1`;
 
@@ -38,14 +34,26 @@ export default async function handler(req, res) {
     if (!rec) return res.status(404).json({ error: "Not found" });
 
     const f = rec.fields || {};
-    const stage = Math.max(0, STAGES.indexOf((f["Status"] || "").trim()));
-    const updated = f["Last Updated"]
-      ? new Date(f["Last Updated"]).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+
+    // Respect the VISIBLE flag — hidden rows behave as if they don't exist.
+    const visible = f["VISIBLE"];
+    if (visible !== undefined && String(visible).toUpperCase().trim() !== "YES") {
+      return res.status(404).json({ error: "Not found" });
+    }
+
+    const stage = Math.max(0, STAGES.indexOf(String(f["STAGE"] || "").toUpperCase().trim()));
+    const updated = f["LAST UPDATED"]
+      ? new Date(f["LAST UPDATED"]).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
       : "";
 
-    // Cache at the edge for 60s so repeat checks don't re-hit Airtable.
-    res.setHeader("Cache-Control", "public, s-maxage=60, stale-while-revalidate=120");
-    return res.status(200).json({ stage, card: f["Cards"] || "Your submission", updated });
+    res.setHeader("Cache-Control", "public, s-maxage=30, stale-while-revalidate=120");
+    return res.status(200).json({
+      stage,
+      updated,
+      notes: f["NOTES"] || "",
+      paymentStatus: f["PAYMENT_STATUS"] || "",
+      invoiceLink: f["INVOICE_LINK"] || ""
+    });
   } catch (e) {
     return res.status(500).json({ error: "Server error" });
   }
