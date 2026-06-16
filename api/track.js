@@ -1,30 +1,29 @@
-// api/track.js — PBJZ submission tracker (with diagnostics)
+// api/track.js — PBJZ submission tracker (diagnostic: echoes base/table)
 const STAGES = ["ORDER ARRIVED", "RESEARCH & ID", "GRADING", "ASSEMBLY", "QA CHECKS", "SHIPPED TO PBJZ", "ORDER SENT"];
 
 export default async function handler(req, res) {
   const sub = (req.query.sub || "").toString().trim();
   if (!sub) return res.status(400).json({ error: "Missing submission number" });
 
-  const { AIRTABLE_TOKEN, AIRTABLE_BASE } = process.env;
-  const table = process.env.AIRTABLE_TABLE || "psa";
-  if (!AIRTABLE_TOKEN || !AIRTABLE_BASE) {
-    return res.status(500).json({ error: "Server not configured" });
-  }
+  const token = (process.env.AIRTABLE_TOKEN || "").trim();
+  const base = (process.env.AIRTABLE_BASE || "").trim();
+  const table = (process.env.AIRTABLE_TABLE || "psa").trim();
+  if (!token || !base) return res.status(500).json({ error: "Server not configured" });
 
   const safe = sub.replace(/'/g, "\\'");
   const formula = `{PSA_NUMBER}='${safe}'`;
-  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${encodeURIComponent(table)}`
+  const url = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`
             + `?filterByFormula=${encodeURIComponent(formula)}&maxRecords=1`;
 
   try {
-    const r = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     if (!r.ok) {
-      const detail = (await r.text()).slice(0, 300);
-      return res.status(502).json({ error: "Lookup failed", status: r.status, tokenPrefix: AIRTABLE_TOKEN.slice(0, 3), detail });
+      const detail = (await r.text()).slice(0, 180);
+      return res.status(502).json({ error: "Lookup failed", status: r.status, base, table, detail });
     }
     const data = await r.json();
     const rec = data.records && data.records[0];
-    if (!rec) return res.status(404).json({ error: "Not found" });
+    if (!rec) return res.status(404).json({ error: "Not found", note: "connected OK, no matching PSA_NUMBER", base, table });
 
     const f = rec.fields || {};
     const visible = f["VISIBLE"];
