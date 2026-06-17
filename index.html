@@ -307,18 +307,10 @@
             <li><span class="tick">✓</span> Offers usually back within a couple of days</li>
           </ul>
         </div>
-        <form class="sell" id="sellForm" novalidate>
-          <div class="frow">
-            <div class="inp"><label for="nm">Name</label><input id="nm" placeholder="Your name" /></div>
-            <div class="inp"><label for="em">Email or handle</label><input id="em" placeholder="you@email.com" /></div>
-          </div>
-          <div class="frow"><div class="inp full"><label for="cd">What are you selling?</label><textarea id="cd" placeholder="Year, set, player, grade if slabbed, rough condition…"></textarea></div></div>
-          <div class="frow"><div class="inp full"><label>Photos of the cards</label>
-            <label class="drop" for="ph"><span id="dropTxt">Tap to add photos — fronts and backs help most</span><input id="ph" type="file" accept="image/*" multiple /></label>
-          </div></div>
-          <button type="submit" class="btn" style="width:100%;">Send for an offer</button>
-          <div class="form-msg" id="sellMsg" aria-live="polite"></div>
-        </form>
+        <div class="sell-embed">
+          <div style="width:100%;min-height:540px;" data-fillout-id="6RYkKPmBewus" data-fillout-embed-type="standard" data-fillout-inherit-parameters data-fillout-dynamic-resize></div>
+          <script src="https://server.fillout.com/embed/v1/"></script>
+        </div>
       </div>
     </div>
   </section>
@@ -395,7 +387,7 @@
      CONFIG — flip these on once your backend / feeds are live.
      ============================================================ */
   const USE_DEMO = false;                // live: reads your Airtable via /api/track
-  const BEHOLD_FEED_ID = "C0cDX1wiGARVy44buEVM";             // paste your Behold JSON feed id to go live
+  const BEHOLD_FEED_ID = "";             // paste your Behold JSON feed id to go live
 
   // STAGE order = the progress order shown to customers.
   // Must match your Airtable "STAGE" single-select values exactly. Reorder if needed.
@@ -467,10 +459,13 @@
   const note = document.getElementById('hitsNote');
   let beholdPosts = null;
 
-  function tile(grade, title, sub, img){
-    return `<div class="hit">${img?`<img src="${img}" alt="${title}" loading="lazy"/>`:''}
+  function tile(grade, title, sub, img, link){
+    const inner = `${img?`<img src="${img}" alt="${title}" loading="lazy"/>`:''}
       ${grade?`<span class="grade">${grade}</span>`:''}
-      <div class="cap"><div class="t">${title}</div><div class="s">${sub}</div></div></div>`;
+      <div class="cap"><div class="t">${title}</div><div class="s">${sub}</div></div>`;
+    return link
+      ? `<a class="hit" href="${link}" target="_blank" rel="noopener">${inner}</a>`
+      : `<div class="hit">${inner}</div>`;
   }
   function paintDemo(range){ grid.innerHTML = DEMO_HITS[range].map(h=>tile(h[0],h[1],h[2],null)).join(''); }
 
@@ -478,12 +473,13 @@
     try{
       const r = await fetch('https://feeds.behold.so/' + BEHOLD_FEED_ID);
       const data = await r.json();
-      beholdPosts = (data.posts||data||[]).map(p=>({
+      beholdPosts = (data.posts||[]).map(p=>({
         img: p.sizes?.medium?.mediaUrl || p.mediaUrl || p.thumbnailUrl,
-        caption: (p.caption||'').split('\n')[0].slice(0,42) || 'New hit',
+        caption: ((p.prunedCaption || p.caption || '').split('\n')[0].slice(0,46)) || 'New hit',
+        link: p.permalink || '#',
         ts: p.timestamp ? new Date(p.timestamp).getTime() : Date.now()
       }));
-      note.textContent = 'Live from @pbjz on Instagram.';
+      note.textContent = data.username ? ('Live from @' + data.username + ' on Instagram.') : 'Live from Instagram.';
       paintRange('week');
     }catch(e){ paintDemo('week'); }
   }
@@ -492,7 +488,7 @@
     const cut = Date.now() - (range==='week'?7:30)*864e5;
     const posts = beholdPosts.filter(p=>p.ts>=cut).slice(0,8);
     const list = posts.length ? posts : beholdPosts.slice(0,8);
-    grid.innerHTML = list.map(p=>tile('', p.caption, new Date(p.ts).toLocaleDateString(), p.img)).join('');
+    grid.innerHTML = list.map(p=>tile('', p.caption, new Date(p.ts).toLocaleDateString(), p.img, p.link)).join('');
   }
 
   document.querySelectorAll('.seg button').forEach(btn=>btn.addEventListener('click',()=>{
@@ -501,18 +497,7 @@
   }));
   BEHOLD_FEED_ID ? loadBehold() : paintDemo('week');
 
-  /* ---------- form demos (wire per the runbook) ---------- */
-  document.getElementById('ph').addEventListener('change',e=>{
-    const n=e.target.files.length;
-    document.getElementById('dropTxt').textContent = n? `${n} photo${n>1?'s':''} attached ✓` : 'Tap to add photos — fronts and backs help most';
-  });
-  document.getElementById('sellForm').addEventListener('submit',e=>{
-    e.preventDefault();
-    const m=document.getElementById('sellMsg');
-    if(!document.getElementById('nm').value.trim()){ m.style.color='var(--red-bright)'; m.textContent='Add your name so I know who to reply to.'; return; }
-    m.style.color='var(--red-bright)'; m.textContent='Got it — preview only, nothing sent yet. Live, this lands in your Airtable.';
-    e.target.reset(); document.getElementById('dropTxt').textContent='Tap to add photos — fronts and backs help most';
-  });
+  /* sell form is handled by the embedded Fillout form (writes to Airtable) */
   document.getElementById('newsBtn').addEventListener('click',()=>{
     const m=document.getElementById('newsMsg'), v=document.getElementById('newsEmail').value.trim();
     if(!/.+@.+\..+/.test(v)){ m.style.color='var(--red-bright)'; m.textContent='Enter a valid email.'; return; }
