@@ -35,8 +35,8 @@ export default async function handler(req, res) {
     items.sort((a, b) =>
       (a.status.toLowerCase() === "available" ? 0 : 1) - (b.status.toLowerCase() === "available" ? 0 : 1));
 
-    // Airtable photo URLs expire after a couple hours, so keep the cache short to stay fresh.
-    res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
+    // Short cache so newly added Airtable rows show up within ~30s. (Airtable photo URLs expire after ~2h.)
+    res.setHeader("Cache-Control", "public, s-maxage=30, stale-while-revalidate=120");
     return res.status(200).json({ items });
   } catch (e) {
     return res.status(500).json({ error: "Server error" });
