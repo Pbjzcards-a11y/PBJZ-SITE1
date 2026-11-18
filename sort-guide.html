@@ -98,8 +98,13 @@
   #numview .tm{display:inline-flex;align-items:center;gap:8px}
   #numview .cap{width:56px;height:56px;object-fit:contain}
   #numview .chip{font-family:"Bebas Neue";font-size:40px;line-height:1;padding:7px 8px 3px;border-radius:9px;min-width:80px;text-align:center;
-    background:color-mix(in srgb,var(--c) 85%,#000);color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+    background:color-mix(in srgb,var(--c) 52%,#1b1e24);color:#f4f5f7;text-shadow:0 1px 2px rgba(0,0,0,.5);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
   #numview .nk{display:none}
+  /* striped rows */
+  #numview .base .cell:nth-child(odd){background:#0e1014;border-color:#1a1d23}
+  #numview .base .cell:nth-child(even){background:#232833;border-color:#2e3440}
+  #numview .glist .cell:nth-child(4n+3),#numview .glist .cell:nth-child(4n+4){background:#232833;border-color:#2e3440}
+  #numview .glist .cell:nth-child(4n+1),#numview .glist .cell:nth-child(4n+2){background:#0e1014;border-color:#1a1d23}
   #numview .cell.split{border-color:#6b5420;background:#1a160c}
   #numview .side{display:flex;flex-direction:column;gap:14px}
   #numview .grp{display:flex;flex-direction:column;flex:auto;background:#0d0f13;border:1px solid var(--line);border-radius:16px;padding:12px 12px 10px}
