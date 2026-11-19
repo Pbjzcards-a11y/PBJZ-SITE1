@@ -103,6 +103,14 @@
   /* striped rows */
   #numview .base .cell:nth-child(odd){background:#0e1014;border-color:#1a1d23}
   #numview .base .cell:nth-child(even){background:#232833;border-color:#2e3440}
+  /* center grid at ~2/3 size */
+  #numview .nb{display:flex;flex-direction:column}
+  #numview .base{width:1720px;margin:auto;gap:9px 9px}
+  #numview .base .cell{padding:7px 6px;gap:7px}
+  #numview .base .num{font-size:43px;min-width:58px}
+  #numview .base .cap{width:38px;height:38px}
+  #numview .base .tm{gap:6px}
+  #numview .base .chip{font-size:27px;min-width:54px;padding:5px 6px 2px;border-radius:7px}
   #numview .glist .cell:nth-child(4n+3),#numview .glist .cell:nth-child(4n+4){background:#232833;border-color:#2e3440}
   #numview .glist .cell:nth-child(4n+1),#numview .glist .cell:nth-child(4n+2){background:#0e1014;border-color:#1a1d23}
   #numview .cell.split{border-color:#6b5420;background:#1a160c}
